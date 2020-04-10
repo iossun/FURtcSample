@@ -131,29 +131,34 @@
 - (void)startPreview:(UIButton *)sender {
     
     sender.enabled = NO;
-    //设置自动(手动)模式
-    [self.engine setAutoPublish:YES withAutoSubscribe:YES];
     
-    //随机生成用户名，仅是demo展示使用
-    NSString *userName = [NSString stringWithFormat:@"iOSUser%u",arc4random()%1234];
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+         //设置自动(手动)模式
+           [self.engine setAutoPublish:YES withAutoSubscribe:YES];
+           
+           //随机生成用户名，仅是demo展示使用
+           NSString *userName = [NSString stringWithFormat:@"iOSUser%u",arc4random()%1234];
+           
+           //AliRtcAuthInfo:各项参数均需要客户App Server(客户的server端) 通过OpenAPI来获取，然后App Server下发至客户端，客户端将各项参数赋值后，即可joinChannel
+           AliRtcAuthInfo *authInfo = [RTCSampleUserAuthrization getPassportFromAppServer:self.channelName userName:userName];
+           
+           //加入频道
+           [self.engine joinChannel:authInfo name:userName onResult:^(NSInteger errCode) {
+               //加入频道回调处理
+               NSLog(@"joinChannel result: %d", (int)errCode);
+               dispatch_async(dispatch_get_main_queue(), ^{
+                   if (errCode != 0) {
+                       sender.enabled = YES;
+                   }
+                   _isJoinChannel = YES;
+               });
+           }];
+           
+           //防止屏幕锁定
+           [UIApplication sharedApplication].idleTimerDisabled = YES;
+    });
     
-    //AliRtcAuthInfo:各项参数均需要客户App Server(客户的server端) 通过OpenAPI来获取，然后App Server下发至客户端，客户端将各项参数赋值后，即可joinChannel
-    AliRtcAuthInfo *authInfo = [RTCSampleUserAuthrization getPassportFromAppServer:self.channelName userName:userName];
-    
-    //加入频道
-    [self.engine joinChannel:authInfo name:userName onResult:^(NSInteger errCode) {
-        //加入频道回调处理
-        NSLog(@"joinChannel result: %d", (int)errCode);
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (errCode != 0) {
-                sender.enabled = YES;
-            }
-            _isJoinChannel = YES;
-        });
-    }];
-    
-    //防止屏幕锁定
-    [UIApplication sharedApplication].idleTimerDisabled = YES;
+   
 }
 
 /**
